@@ -1,0 +1,28 @@
+# Exemplo de configuração do BerserkerPlayer.
+# Precedência: defaults < arquivo < env (BERSERKER_*) < flags.
+
+music_folder = "./music"
+data_folder  = "./data"
+port         = 4533
+log_level    = "info"          # debug|info|warn|error
+
+# Scan
+scan_on_start = true
+scan_interval = "0s"            # ex.: "15m" para rescan periódico (0 = desabilitado)
+
+# Auth
+# jwt_secret = ""               # vazio = gerado e persistido em data/jwt.secret
+admin_user = "admin"
+# admin_password = ""           # vazio na 1ª execução = senha gerada (logada uma vez)
+access_token_ttl  = "15m"
+refresh_token_ttl = "720h"      # 30 dias
+media_token_ttl   = "6h"
+
+# Streaming / transcodificação
+transcoding_enabled = true
+ffmpeg_path  = "ffmpeg"
+ffprobe_path = "ffprobe"
+
+# WebApp (origem única) e CORS
+# webapp_dir = "../apps/webapp/dist"   # serve o build estático do webapp
+# allowed_origins = ""                 # ex.: "http://localhost:5173" para dev cross-origin
