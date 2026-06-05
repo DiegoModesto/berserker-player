@@ -1,0 +1,35 @@
+# ---- General ----
+.DS_Store
+*.log
+.env
+.env.local
+*.local
+
+# ---- Go (server) ----
+server/berserker
+server/bin/
+server/data/
+*.db
+*.db-wal
+*.db-shm
+server/coverage.out
+
+# ---- Node / WebApp ----
+node_modules/
+apps/webapp/dist/
+apps/webapp/.vite/
+apps/webapp/src/api/generated.ts
+
+# ---- iOS / mobile ----
+apps/mobile/*.xcodeproj
+apps/mobile/*.xcworkspace
+apps/mobile/DerivedData/
+apps/mobile/build/
+apps/mobile/.swiftpm/
+**/xcuserdata/
+**/*.xcuserstate
+
+# ---- Editors ----
+.idea/
+.vscode/
+*.swp

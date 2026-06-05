@@ -1,0 +1,670 @@
+openapi: 3.1.0
+info:
+  title: BerserkerPlayer Native API
+  version: 1.0.0-draft
+  description: |
+    Contrato da **API nativa** do BerserkerPlayer (`/api/v1`). Fonte da verdade para
+    os clientes (iOS e WebApp). A camada de compatibilidade Subsonic (`/rest/*`) é
+    documentada separadamente e **não** faz parte deste contrato.
+
+    ## Autenticação
+    - Endpoints de dados usam JWT no header: `Authorization: Bearer <accessToken>`.
+    - **Endpoints de mídia** (`/stream`, `/cover`) NÃO conseguem receber esse header de
+      forma confiável a partir de um `<audio>` (browser) ou `AVPlayer` (iOS). Por isso
+      aceitam um **token de mídia assinado e de curta duração** via query string
+      (`?token=`), obtido em `POST /auth/media-token`. Esse token só autoriza leitura de
+      mídia/artwork, é vinculado ao usuário e expira em minutos.
+    - O refresh token é entregue/renovado por **cookie httpOnly** quando o cliente é o
+      WebApp servido pela mesma origem; clientes nativos (iOS) recebem o refresh no corpo
+      e guardam no Keychain. Veja `POST /auth/login`.
+
+    ## Paginação
+    Listagens usam **offset/limit** (`?offset=&limit=`) e retornam um envelope `Page`
+    com `total`, permitindo "infinite scroll" (TanStack Query) e jump-to-page.
+    Decisão: offset/limit em vez de cursor, por suportar sorts arbitrários em SQLite.
+
+    ## Erros
+    Todas as respostas de erro usam o schema `Error` com `application/problem+json`.
+servers:
+  - url: /api/v1
+    description: API nativa
+
+tags:
+  - name: auth
+  - name: library
+  - name: playlists
+  - name: annotations
+  - name: media
+
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Autentica usuário e emite tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: |
+            Tokens emitidos. Para o WebApp de mesma origem, o `refreshToken` também é
+            definido em cookie httpOnly `Secure SameSite=Strict` e PODE ser omitido do corpo.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: "refreshToken (httpOnly) — apenas WebApp same-origin"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Renova o access token (rotação de refresh)
+      security: []
+      requestBody:
+        required: false
+        description: "Clientes nativos enviam o refreshToken aqui; WebApp usa o cookie."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+      responses:
+        "200":
+          description: Novo par de tokens (refresh rotacionado)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/media-token:
+    post:
+      tags: [auth, media]
+      summary: Emite token assinado de curta duração para /stream e /cover
+      responses:
+        "200":
+          description: Token de mídia
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expiresAt]
+                properties:
+                  token: { type: string, description: "Usar como ?token= em /stream e /cover" }
+                  expiresAt: { type: string, format: date-time }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /me:
+    get:
+      tags: [auth]
+      summary: Dados do usuário autenticado
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /artists:
+    get:
+      tags: [library]
+      summary: Lista artistas
+      parameters:
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Limit"
+        - name: sort
+          in: query
+          schema: { type: string, enum: [name, albumCount, recentlyAdded], default: name }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: asc }
+      responses:
+        "200":
+          description: Página de artistas
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Page"
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: "#/components/schemas/Artist" }
+
+  /artists/{id}:
+    get:
+      tags: [library]
+      summary: Detalhe do artista (inclui álbuns)
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Artist"
+                  - type: object
+                    properties:
+                      albums:
+                        type: array
+                        items: { $ref: "#/components/schemas/Album" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /albums:
+    get:
+      tags: [library]
+      summary: Lista álbuns
+      parameters:
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Limit"
+        - name: filter
+          in: query
+          schema: { type: string, enum: [all, recent, frequent, random, starred], default: all }
+        - name: genre
+          in: query
+          schema: { type: string }
+        - name: artistId
+          in: query
+          schema: { type: string }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [name, year, recentlyAdded, playCount], default: name }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: asc }
+      responses:
+        "200":
+          description: Página de álbuns
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Page"
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: "#/components/schemas/Album" }
+
+  /albums/{id}:
+    get:
+      tags: [library]
+      summary: Detalhe do álbum (inclui faixas)
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Album"
+                  - type: object
+                    properties:
+                      songs:
+                        type: array
+                        items: { $ref: "#/components/schemas/Song" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /songs/{id}:
+    get:
+      tags: [library]
+      summary: Detalhe de uma faixa
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Song" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /search:
+    get:
+      tags: [library]
+      summary: Busca unificada (FTS) em artistas, álbuns e faixas
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: Resultados agrupados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  artists: { type: array, items: { $ref: "#/components/schemas/Artist" } }
+                  albums:  { type: array, items: { $ref: "#/components/schemas/Album" } }
+                  songs:   { type: array, items: { $ref: "#/components/schemas/Song" } }
+
+  /playlists:
+    get:
+      tags: [playlists]
+      summary: Lista playlists do usuário
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Playlist" }
+    post:
+      tags: [playlists]
+      summary: Cria playlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                songIds: { type: array, items: { type: string } }
+      responses:
+        "201":
+          description: Criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+
+  /playlists/{id}:
+    get:
+      tags: [playlists]
+      summary: Detalhe da playlist (inclui faixas ordenadas)
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Playlist"
+                  - type: object
+                    properties:
+                      songs:
+                        type: array
+                        items: { $ref: "#/components/schemas/Song" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [playlists]
+      summary: Edita/reordena playlist
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                songIds:
+                  type: array
+                  description: "Ordem completa das faixas após a edição"
+                  items: { type: string }
+      responses:
+        "200":
+          description: Atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [playlists]
+      summary: Remove playlist
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "204": { description: Removida }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /star:
+    post:
+      tags: [annotations]
+      summary: Favorita um item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemRef" }
+      responses:
+        "204": { description: OK }
+    delete:
+      tags: [annotations]
+      summary: Remove favorito
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemRef" }
+      responses:
+        "204": { description: OK }
+
+  /rating:
+    post:
+      tags: [annotations]
+      summary: Define rating (0-5) de um item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ItemRef"
+                - type: object
+                  required: [rating]
+                  properties:
+                    rating: { type: integer, minimum: 0, maximum: 5 }
+      responses:
+        "204": { description: OK }
+
+  /scrobble:
+    post:
+      tags: [annotations]
+      summary: Registra reprodução (now playing / submission)
+      description: |
+        `event=nowplaying` ao iniciar a faixa; `event=submission` ao ultrapassar ~50% ou
+        concluir. O servidor deduplica submissões por (userId, songId, janela de tempo)
+        para evitar contagem dupla quando dois clientes ou recargas disparam o evento.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [songId, event]
+              properties:
+                songId: { type: string }
+                event: { type: string, enum: [nowplaying, submission] }
+                playedAt: { type: string, format: date-time }
+      responses:
+        "204": { description: OK }
+
+  /stream/{songId}:
+    get:
+      tags: [media]
+      summary: Stream de áudio
+      description: |
+        **Auth:** via `?token=` (token de mídia assinado), pois `<audio>`/`AVPlayer` não
+        enviam header Bearer.
+
+        **Direct play** (sem `format`/`maxBitRate`, ou compatível): serve o arquivo
+        original com `Accept-Ranges: bytes`, respondendo a `Range` com `206 Partial
+        Content` — habilita seek e buffering parcial.
+
+        **Transcodificação** (`format`/`maxBitRate` forçam reencode via ffmpeg): a saída
+        é um pipe de tamanho desconhecido e **NÃO é seekável por Range** (responde `200`
+        com `Transfer-Encoding: chunked`). Para seek em conteúdo transcodificado, o
+        cliente reabre a stream com `?timeOffset=` (segundos), e o servidor inicia o
+        ffmpeg a partir daquele ponto.
+      security:
+        - mediaToken: []
+      parameters:
+        - name: songId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+        - name: format
+          in: query
+          schema: { type: string, enum: [raw, mp3, opus, aac], default: raw }
+        - name: maxBitRate
+          in: query
+          schema: { type: integer, description: "kbps; 0 = sem limite" }
+        - name: timeOffset
+          in: query
+          schema: { type: integer, description: "Segundos; só para conteúdo transcodificado" }
+        - name: Range
+          in: header
+          required: false
+          schema: { type: string }
+          description: "Apenas direct play; ignorado em transcodificação"
+      responses:
+        "200":
+          description: Stream completo (direct play sem Range, ou transcodificação chunked)
+          content:
+            audio/*:
+              schema: { type: string, format: binary }
+        "206":
+          description: Conteúdo parcial (direct play com Range)
+          headers:
+            Content-Range: { schema: { type: string } }
+            Accept-Ranges: { schema: { type: string } }
+          content:
+            audio/*:
+              schema: { type: string, format: binary }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /cover/{id}:
+    get:
+      tags: [media]
+      summary: Artwork (capa) de álbum/artista/faixa
+      description: "Auth via `?token=` (token de mídia). Suporta resize por `?size=`."
+      security:
+        - mediaToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+        - name: size
+          in: query
+          schema: { type: integer, description: "Lado em px (thumbnail quadrado); omitido = original" }
+      responses:
+        "200":
+          description: Imagem
+          content:
+            image/*:
+              schema: { type: string, format: binary }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /healthz:
+    servers:
+      - url: /
+    get:
+      tags: [auth]
+      summary: Healthcheck
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  version: { type: string }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    mediaToken:
+      type: apiKey
+      in: query
+      name: token
+      description: "Token assinado de curta duração, emitido por /auth/media-token"
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+
+  responses:
+    Unauthorized:
+      description: Token ausente, inválido ou expirado
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      description: "RFC 7807 problem details"
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri, default: "about:blank" }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+
+    Page:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items: { type: array, items: {} }
+        total: { type: integer, description: "Total de itens disponíveis" }
+        offset: { type: integer }
+        limit: { type: integer }
+
+    TokenPair:
+      type: object
+      required: [accessToken, expiresAt]
+      properties:
+        accessToken: { type: string }
+        refreshToken:
+          type: string
+          description: "Omitido para WebApp same-origin (vai no cookie httpOnly)"
+        expiresAt: { type: string, format: date-time }
+
+    User:
+      type: object
+      required: [id, username, isAdmin]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        isAdmin: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    Artist:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        albumCount: { type: integer }
+        songCount: { type: integer }
+        starred: { type: boolean }
+        coverArtId: { type: string, description: "Usar em /cover/{id}" }
+
+    Album:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        artistId: { type: string }
+        artistName: { type: string }
+        year: { type: integer }
+        genre: { type: string }
+        songCount: { type: integer }
+        duration: { type: integer, description: "segundos" }
+        coverArtId: { type: string }
+        starred: { type: boolean }
+        playCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    Song:
+      type: object
+      required: [id, title, albumId, duration]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        albumId: { type: string }
+        albumName: { type: string }
+        artistId: { type: string }
+        artistName: { type: string }
+        track: { type: integer }
+        disc: { type: integer }
+        duration: { type: integer, description: "segundos" }
+        bitRate: { type: integer, description: "kbps" }
+        sampleRate: { type: integer }
+        suffix: { type: string, description: "extensão/formato original (mp3, flac...)" }
+        size: { type: integer, description: "bytes" }
+        coverArtId: { type: string }
+        starred: { type: boolean }
+        rating: { type: integer, minimum: 0, maximum: 5 }
+        playCount: { type: integer }
+
+    Playlist:
+      type: object
+      required: [id, name, songCount]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        ownerId: { type: string }
+        songCount: { type: integer }
+        duration: { type: integer, description: "segundos" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ItemRef:
+      type: object
+      required: [id, type]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [artist, album, song] }
+
+security:
+  - bearerAuth: []
