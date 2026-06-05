@@ -1,0 +1,62 @@
+name: BerserkerPlayer
+options:
+  bundleIdPrefix: com.diegomodesto.berserker
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGN_IDENTITY: ""
+
+targets:
+  BerserkerPlayer:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.diegomodesto.berserker.player
+        GENERATE_INFOPLIST_FILE: "NO"
+        INFOPLIST_FILE: Sources/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_PREVIEWS: "YES"
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: Berserker
+        UILaunchScreen: {}
+        UIBackgroundModes:
+          - audio
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+
+  BerserkerPlayerTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: BerserkerPlayer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.diegomodesto.berserker.player.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+
+schemes:
+  BerserkerPlayer:
+    build:
+      targets:
+        BerserkerPlayer: all
+        BerserkerPlayerTests: [test]
+    test:
+      targets:
+        - BerserkerPlayerTests
