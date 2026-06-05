@@ -40,24 +40,96 @@ A imagem é multi-stage: builda o WebApp, compila o servidor (binário estático
 empacota com `ffmpeg`. O WebApp é servido pelo próprio binário (origem única). `BERSERKER_WATCH=true`
 habilita rescan incremental em tempo real (fsnotify).
 
-## Rodar em desenvolvimento
+## Instalação local
+
+### Pré‑requisitos
+
+| Ferramenta | Para quê | Versão |
+|---|---|---|
+| **Go** | servidor | 1.22+ |
+| **ffmpeg** / **ffprobe** | scan (duração/bitrate) e transcodificação | qualquer recente |
+| **Node** + **npm** | webapp | Node 20+ |
+| **Xcode** | app iOS | 15+ |
+| **XcodeGen** | gerar o projeto iOS a partir de `project.yml` | 2.4+ |
+
+No macOS, via [Homebrew](https://brew.sh):
 
 ```bash
-# Servidor (Go + ffmpeg):
-cd server && go run ./cmd/berserker --music /sua/musica --data ./data --admin-password trocar
-
-# WebApp (proxy para :4533):
-cd apps/webapp && npm install && npm run dev      # http://localhost:5173
-
-# iOS (Xcode + XcodeGen):
-cd apps/mobile && xcodegen generate && open BerserkerPlayer.xcodeproj
+brew install go ffmpeg node xcodegen
+# Xcode pela App Store; depois aceite a licença e instale a plataforma de simulador iOS:
+sudo xcodebuild -license accept
+xcodebuild -downloadPlatform iOS
 ```
 
-## Requisitos de desenvolvimento
+Clone o repositório:
 
-- **Go** 1.22+ e **ffmpeg** (servidor)
-- **Node** 20+ (webapp)
-- **Xcode** 15+ e **XcodeGen** (mobile)
+```bash
+git clone git@github.com:DiegoModesto/berserker-player.git
+cd berserker-player
+```
+
+### Servidor (Go + SQLite + ffmpeg)
+
+```bash
+cd server
+go mod download
+go run ./cmd/berserker --music /caminho/da/sua/musica --data ./data --admin-password trocar123
+# Servindo em http://localhost:4533  ·  healthcheck: GET /healthz
+```
+
+Na 1ª execução cria o usuário `admin` (use `--admin-password`; se omitir, uma senha é gerada e
+**logada uma única vez**). Outras opções: `--config berserker.example.toml`, `--port`, `BERSERKER_WATCH=true`
+(rescan em tempo real). Para servir o WebApp na mesma origem: `--webapp-dir ../apps/webapp/dist`.
+
+### WebApp (React + Vite)
+
+```bash
+cd apps/webapp
+npm install
+npm run dev        # http://localhost:5173  (faz proxy de /api → http://localhost:4533)
+npm run build      # build de produção em dist/ (gera também o service worker do PWA)
+```
+
+### App iOS (SwiftUI)
+
+```bash
+cd apps/mobile
+xcodegen generate            # gera BerserkerPlayer.xcodeproj a partir de project.yml
+open BerserkerPlayer.xcodeproj
+# Build/teste por linha de comando (escolha um simulador instalado):
+xcodebuild -scheme BerserkerPlayer -destination 'platform=iOS Simulator,name=iPhone 15' build
+```
+
+No app, informe a URL do servidor (ex.: `http://SEU_IP:4533`), usuário e senha.
+
+## Testes
+
+```bash
+# Servidor (Go) — inclui integração com ffmpeg e detector de corrida:
+cd server && go test -race ./...
+# Cobertura (cruzando pacotes):
+go test -coverpkg=./... -coverprofile=cover.out ./... && go tool cover -func=cover.out | tail -1
+
+# WebApp (Vitest):
+cd apps/webapp && npm test
+npm run test:cov          # com relatório de cobertura
+
+# iOS (XCTest no simulador):
+cd apps/mobile && xcodegen generate
+xcodebuild -scheme BerserkerPlayer \
+  -destination 'platform=iOS Simulator,name=iPhone 15' \
+  -enableCodeCoverage YES test
+```
+
+Cobertura atual: **servidor ~80%**, **webapp ~96%** (linhas). No iOS, a camada de lógica
+(fila, downloads offline, persistência) é coberta ~90%+; as views SwiftUI não são cobertas
+por testes unitários (ver [`apps/mobile/README.md`](apps/mobile/README.md)).
+
+> Os testes do servidor e do iOS geram fixtures de áudio com `ffmpeg`; se o `ffmpeg` não estiver
+> instalado, esses testes são **pulados** automaticamente em vez de falhar.
+
+Cada componente tem instruções detalhadas no seu próprio README:
+[server](server/README.md) · [webapp](apps/webapp/README.md) · [mobile](apps/mobile/README.md).
 
 ## Branches por fase
 
