@@ -28,7 +28,14 @@ informado, uma senha é gerada e **logada uma única vez** (troque-a).
 - `GET  /api/v1/cover/{id}?token=&size=` — artwork (com resize/cache)
 - `POST /api/v1/admin/scan` · `GET /api/v1/admin/scan/status` (admin)
 
-As rotas de biblioteca/playlists/anotações entram na Fase 1.
+### Fase 1 (biblioteca, playlists, anotações)
+- `GET  /api/v1/openapi.yaml` — contrato (público)
+- `GET  /api/v1/artists` · `GET /api/v1/artists/{id}`
+- `GET  /api/v1/albums?filter=&genre=&artistId=&sort=&order=&offset=&limit=`
+- `GET  /api/v1/albums/{id}` (com faixas) · `GET /api/v1/songs/{id}`
+- `GET  /api/v1/search?q=&limit=` (FTS5)
+- `GET/POST/PUT/DELETE /api/v1/playlists[/{id}]`
+- `POST/DELETE /api/v1/star` · `POST /api/v1/rating` · `POST /api/v1/scrobble`
 
 ## Testes
 ```bash

@@ -32,11 +32,11 @@ func newTestServer(t *testing.T) (*Server, *core.Store) {
 	if _, err := store.CreateUser("admin", hash, true); err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.Config{}
+	cfg := config.Config{MusicFolder: filepath.Join(tmp, "music")}
 	authSvc := auth.NewService("secret", time.Minute, time.Minute, time.Hour)
 	art := artwork.New(database, filepath.Join(tmp, "cache"))
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	sc := scanner.New(store, filepath.Join(tmp, "music"), "ffprobe", log)
+	sc := scanner.New(store, cfg.MusicFolder, "ffprobe", log)
 	return NewServer(cfg, store, authSvc, sc, art, log, "test"), store
 }
 

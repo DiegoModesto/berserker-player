@@ -47,6 +47,7 @@ func (s *Server) Router() http.Handler {
 		// Públicos
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/refresh", s.handleRefresh)
+		r.Get("/openapi.yaml", s.handleOpenAPI)
 
 		// Autenticados (Bearer)
 		r.Group(func(r chi.Router) {
