@@ -9,7 +9,7 @@ import UIKit
 @Observable
 @MainActor
 final class PlaybackEngine {
-    enum RepeatMode { case off, all, one }
+    typealias RepeatMode = PlaybackQueue.RepeatMode
 
     private(set) var queue: [Song] = []
     private(set) var currentIndex: Int = 0
@@ -22,9 +22,15 @@ final class PlaybackEngine {
     var current: Song? { queue.indices.contains(currentIndex) ? queue[currentIndex] : nil }
 
     private let api: APIClient
+    /// Resolve uma URL local para reprodução offline (injetado opcionalmente).
+    var localURLProvider: ((String) -> URL?)?
     private var player = AVQueuePlayer()
     private var timeObserver: Any?
     private var scrobbledCurrent = false
+
+    private var snapshot: PlaybackQueue {
+        PlaybackQueue(songs: queue, index: currentIndex, repeatMode: repeatMode, shuffle: shuffle)
+    }
 
     init(api: APIClient) {
         self.api = api
@@ -52,21 +58,23 @@ final class PlaybackEngine {
 
     func next() {
         guard !queue.isEmpty else { return }
-        if repeatMode == .one { seek(to: 0); player.play(); return }
-        if currentIndex < queue.count - 1 {
-            currentIndex += 1
-        } else if repeatMode == .all {
-            currentIndex = 0
-        } else {
+        if repeatMode == .one {
+            seek(to: 0)
+            player.play()
             return
         }
+        guard let nextIdx = snapshot.nextIndex() else { return }
+        currentIndex = nextIdx
         Task { await loadCurrent(autoplay: true) }
     }
 
     func previous() {
         guard !queue.isEmpty else { return }
-        if currentTime > 3 { seek(to: 0); return }
-        if currentIndex > 0 { currentIndex -= 1 }
+        if currentTime > 3 {
+            seek(to: 0)
+            return
+        }
+        currentIndex = snapshot.previousIndex(currentTime: currentTime)
         Task { await loadCurrent(autoplay: true) }
     }
 
@@ -81,7 +89,13 @@ final class PlaybackEngine {
     private func loadCurrent(autoplay: Bool) async {
         guard let song = current else { return }
         do {
-            let url = try await api.streamURL(songId: song.id)
+            // Reprodução offline: usa arquivo local quando disponível.
+            let url: URL
+            if let local = localURLProvider?(song.id) {
+                url = local
+            } else {
+                url = try await api.streamURL(songId: song.id)
+            }
             let item = AVPlayerItem(url: url)
             player.removeAllItems()
             player.insert(item, after: nil)

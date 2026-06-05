@@ -15,6 +15,13 @@ struct SettingsView: View {
                     }
                 }
                 Section {
+                    NavigationLink {
+                        DownloadsView()
+                    } label: {
+                        Label("Downloads", systemImage: "arrow.down.circle")
+                    }
+                }
+                Section {
                     Button(role: .destructive) {
                         Task { await session.logout() }
                     } label: {
