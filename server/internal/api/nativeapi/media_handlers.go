@@ -22,7 +22,19 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "erro interno")
 		return
 	}
-	// Fase 0: direct play (Range/206). Transcodificação entra na fase avançada.
+
+	format := r.URL.Query().Get("format")
+	// Transcodificação sob demanda (chunked, não-seekável; seek via timeOffset).
+	if s.cfg.TranscodingEnabled && format != "" && format != "raw" && stream.SupportedFormat(format) {
+		maxBitRate, _ := strconv.Atoi(r.URL.Query().Get("maxBitRate"))
+		timeOffset, _ := strconv.Atoi(r.URL.Query().Get("timeOffset"))
+		if err := s.transcoder.Stream(r.Context(), w, path, format, maxBitRate, timeOffset); err != nil {
+			s.log.Warn("transcodificação falhou", "song", id, "err", err)
+		}
+		return
+	}
+
+	// Direct play (Range/206).
 	if err := stream.ServeFile(w, r, path); err != nil {
 		writeError(w, http.StatusInternalServerError, "falha ao servir arquivo")
 	}

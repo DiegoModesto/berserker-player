@@ -37,6 +37,15 @@ informado, uma senha é gerada e **logada uma única vez** (troque-a).
 - `GET/POST/PUT/DELETE /api/v1/playlists[/{id}]`
 - `POST/DELETE /api/v1/star` · `POST /api/v1/rating` · `POST /api/v1/scrobble`
 
+### Fase avançada
+- **Transcodificação sob demanda:** `/stream/{id}?format=mp3|opus|aac&maxBitRate=&timeOffset=`
+  (chunked; seek via `timeOffset`; processo ffmpeg encerrado ao desconectar). `format=raw`
+  ou ausente → direct play com Range/206.
+- **Compatibilidade Subsonic/OpenSubsonic** (`/rest/*`): ping, getLicense, getArtists,
+  getArtist, getAlbum, getAlbumList2, search3, stream, getCoverArt, scrobble, star/unstar.
+  Auth por `u`+`p` (senha; verificada contra argon2id). Token salt (`t`/`s`) **não** suportado
+  (exigiria senha recuperável — ver Plans/01 §8).
+
 ## Testes
 ```bash
 go test ./...    # inclui integração do scanner (gera áudio via ffmpeg; pula se ausente)

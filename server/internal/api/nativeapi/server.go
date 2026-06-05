@@ -9,27 +9,33 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DiegoModesto/berserker-player/server/internal/api/subsonic"
 	"github.com/DiegoModesto/berserker-player/server/internal/artwork"
 	"github.com/DiegoModesto/berserker-player/server/internal/auth"
 	"github.com/DiegoModesto/berserker-player/server/internal/config"
 	"github.com/DiegoModesto/berserker-player/server/internal/core"
 	"github.com/DiegoModesto/berserker-player/server/internal/scanner"
+	"github.com/DiegoModesto/berserker-player/server/internal/stream"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
-	cfg     config.Config
-	store   *core.Store
-	authSvc *auth.Service
-	scanner *scanner.Scanner
-	art     *artwork.Resolver
-	log     *slog.Logger
-	version string
+	cfg        config.Config
+	store      *core.Store
+	authSvc    *auth.Service
+	scanner    *scanner.Scanner
+	art        *artwork.Resolver
+	transcoder *stream.Transcoder
+	log        *slog.Logger
+	version    string
 }
 
 func NewServer(cfg config.Config, store *core.Store, authSvc *auth.Service, sc *scanner.Scanner, art *artwork.Resolver, log *slog.Logger, version string) *Server {
-	return &Server{cfg: cfg, store: store, authSvc: authSvc, scanner: sc, art: art, log: log, version: version}
+	return &Server{
+		cfg: cfg, store: store, authSvc: authSvc, scanner: sc, art: art,
+		transcoder: stream.NewTranscoder(cfg.FFmpegPath), log: log, version: version,
+	}
 }
 
 func (s *Server) Router() http.Handler {
@@ -66,6 +72,9 @@ func (s *Server) Router() http.Handler {
 		r.With(s.requireMediaToken).Get("/stream/{id}", s.handleStream)
 		r.With(s.requireMediaToken).Get("/cover/{id}", s.handleCover)
 	})
+
+	// Camada de compatibilidade Subsonic/OpenSubsonic (/rest/*).
+	subsonic.NewServer(s.cfg, s.store, s.art, s.log).Mount(r)
 
 	// Servir o WebApp estático (origem única), se configurado.
 	if s.cfg.WebappDir != "" {
