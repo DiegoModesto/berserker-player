@@ -4,6 +4,7 @@ struct AlbumDetailView: View {
     let albumID: String
     @Environment(Session.self) private var session
     @Environment(PlaybackEngine.self) private var playback
+    @Environment(DownloadManager.self) private var downloads
     @State private var detail: AlbumDetail?
 
     var body: some View {
@@ -29,19 +30,22 @@ struct AlbumDetailView: View {
                 }
                 Section {
                     ForEach(Array(detail.songs.enumerated()), id: \.element.id) { idx, song in
-                        Button {
-                            playback.play(songs: detail.songs, startAt: idx)
-                        } label: {
-                            HStack {
-                                Text("\(song.track ?? idx + 1)")
-                                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 24)
-                                Text(song.title).lineLimit(1)
-                                Spacer()
-                                Text((song.duration ?? 0).asTimeString)
-                                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        HStack {
+                            Button {
+                                playback.play(songs: detail.songs, startAt: idx)
+                            } label: {
+                                HStack {
+                                    Text("\(song.track ?? idx + 1)")
+                                        .font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 24)
+                                    Text(song.title).lineLimit(1)
+                                    Spacer()
+                                }
                             }
+                            .buttonStyle(.plain)
+                            DownloadButton(song: song)
+                            Text((song.duration ?? 0).asTimeString)
+                                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             } else {
@@ -53,5 +57,33 @@ struct AlbumDetailView: View {
         .task {
             detail = try? await session.api.albumDetail(albumID)
         }
+    }
+}
+
+/// Botão de download/estado offline de uma faixa.
+struct DownloadButton: View {
+    let song: Song
+    @Environment(DownloadManager.self) private var downloads
+    @State private var downloaded = false
+
+    var body: some View {
+        Group {
+            if downloads.inProgress.contains(song.id) {
+                ProgressView()
+            } else if downloaded {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.accent)
+            } else {
+                Button {
+                    Task {
+                        await downloads.download(song)
+                        downloaded = downloads.isDownloaded(song.id)
+                    }
+                } label: {
+                    Image(systemName: "arrow.down.circle")
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .task(id: song.id) { downloaded = downloads.isDownloaded(song.id) }
     }
 }

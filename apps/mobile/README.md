@@ -44,8 +44,24 @@ Sources/
 - ATS: `NSAllowsArbitraryLoads` habilitado para servidores self-hosted em HTTP (dev).
 
 ## Entregue
-Login (Keychain) · grade de álbuns com filtros · detalhe do álbum · busca · **playlists**
-(aba + detalhe) · **favoritar** no Now Playing · player (fila, seek, prev/next, shuffle/repeat) ·
-mini-player · Now Playing · áudio em background.
+Login (Keychain) · grade de álbuns com filtros · detalhe do álbum · busca · playlists
+(aba + detalhe) · favoritar no Now Playing · player (fila, seek, prev/next, shuffle/repeat) ·
+mini-player · Now Playing · áudio em background · **downloads offline (SwiftData)** com
+reprodução local, gestão de armazenamento e remoção.
 
-Fases futuras: downloads offline (SwiftData), CarPlay, widgets/Live Activities, i18n.
+Fases futuras: CarPlay, widgets/Live Activities, i18n.
+
+## Testes e cobertura
+```bash
+xcodegen generate
+xcodebuild -scheme BerserkerPlayer -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -enableCodeCoverage YES test
+```
+20 testes unitários (XCTest) cobrindo a **camada de lógica** (sem UI):
+- `PlaybackQueue` 94% · `DownloadStore` 95% · `DownloadedTrack` 100% · `DownloadManager` 60%
+- decodificação de modelos da API
+
+> Nota: a cobertura *do app inteiro* é baixa (~10%) porque a maior parte é **views SwiftUI**,
+> que não são exercitadas por testes unitários. Atingir ≥80% global no iOS exigiria testes de
+> UI (XCUITest) com um backend ativo — planejado como trabalho futuro. A lógica testável
+> (offline, fila, persistência, rede) está coberta em ~90%+.
