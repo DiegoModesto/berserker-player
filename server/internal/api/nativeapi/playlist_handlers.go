@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/DiegoModesto/berserker-player/server/internal/core"
 	"github.com/DiegoModesto/berserker-player/server/internal/model"
 	"github.com/go-chi/chi/v5"
 )
@@ -43,15 +44,41 @@ func (s *Server) handleGetPlaylist(w http.ResponseWriter, r *http.Request) {
 		s.notFoundOr500(w, err)
 		return
 	}
-	songs, err := s.store.PlaylistSongs(userID(r), id)
+	var songs []model.Song
+	if smart, rules := s.store.IsSmart(id); smart {
+		// Smart playlist: faixas avaliadas dinamicamente a partir das regras.
+		songs, err = s.store.EvaluateSmart(userID(r), rules)
+	} else {
+		songs, err = s.store.PlaylistSongs(userID(r), id)
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "erro interno")
 		return
 	}
+	pl.SongCount = len(songs)
 	writeJSON(w, http.StatusOK, struct {
 		model.Playlist
 		Songs []model.Song `json:"songs"`
 	}{pl, songs})
+}
+
+type smartPlaylistReq struct {
+	Name  string          `json:"name"`
+	Rules core.SmartRules `json:"rules"`
+}
+
+func (s *Server) handleCreateSmartPlaylist(w http.ResponseWriter, r *http.Request) {
+	var req smartPlaylistReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		writeError(w, http.StatusBadRequest, "nome obrigatório")
+		return
+	}
+	pl, err := s.store.CreateSmartPlaylist(userID(r), req.Name, req.Rules)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "erro ao criar smart playlist")
+		return
+	}
+	writeJSON(w, http.StatusCreated, pl)
 }
 
 type updatePlaylistReq struct {
