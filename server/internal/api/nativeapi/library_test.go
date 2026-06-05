@@ -22,6 +22,9 @@ func seedLibrary(t *testing.T, srv *Server) {
 	}
 	dir := filepath.Join(srv.cfg.MusicFolder, "Album X")
 	_ = os.MkdirAll(dir, 0o755)
+	// Capa na pasta (cobre artwork + endpoint /cover).
+	_ = exec.Command("ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=red:s=64x64",
+		"-frames:v", "1", filepath.Join(dir, "cover.jpg")).Run()
 	for i, title := range []string{"One", "Two"} {
 		f := filepath.Join(dir, []string{"01.mp3", "02.mp3"}[i])
 		cmd := exec.Command("ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
@@ -128,6 +131,28 @@ func TestLibraryFlow(t *testing.T) {
 	authGet(t, srv, token, "/api/v1/songs/"+songID, &song)
 	if song.Rating != 4 || song.PlayCount != 1 {
 		t.Fatalf("rating/playcount inesperados: %+v", song)
+	}
+}
+
+func TestSmartPlaylistAPI(t *testing.T) {
+	srv, _ := newTestServer(t)
+	seedLibrary(t, srv)
+	token := login(t, srv, "admin", "pw")
+
+	var pl model.Playlist
+	code := authSend(t, srv, "POST", token, "/api/v1/playlists/smart",
+		map[string]any{"name": "Tudo", "rules": map[string]any{"sort": "title", "limit": 10}}, &pl)
+	if code != 201 {
+		t.Fatalf("create smart %d", code)
+	}
+	var detail struct {
+		Songs []model.Song `json:"songs"`
+	}
+	if code := authGet(t, srv, token, "/api/v1/playlists/"+pl.ID, &detail); code != 200 {
+		t.Fatalf("get smart %d", code)
+	}
+	if len(detail.Songs) != 2 {
+		t.Fatalf("smart playlist deveria avaliar 2 faixas, %d", len(detail.Songs))
 	}
 }
 

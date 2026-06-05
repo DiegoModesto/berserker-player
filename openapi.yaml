@@ -296,10 +296,41 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Playlist" }
 
+  /playlists/smart:
+    post:
+      tags: [playlists]
+      summary: Cria uma smart playlist (dinâmica, avaliada por regras)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, rules]
+              properties:
+                name: { type: string }
+                rules:
+                  type: object
+                  description: "Regras avaliadas dinamicamente na leitura"
+                  properties:
+                    genre: { type: string }
+                    artist: { type: string, description: "substring do nome" }
+                    minYear: { type: integer }
+                    maxYear: { type: integer }
+                    starred: { type: boolean }
+                    sort: { type: string, enum: [recentlyAdded, playCount, random, title] }
+                    limit: { type: integer, default: 50 }
+      responses:
+        "201":
+          description: Criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+
   /playlists/{id}:
     get:
       tags: [playlists]
-      summary: Detalhe da playlist (inclui faixas ordenadas)
+      summary: Detalhe da playlist (inclui faixas ordenadas; smart = avaliada por regras)
       parameters: [ { $ref: "#/components/parameters/Id" } ]
       responses:
         "200":

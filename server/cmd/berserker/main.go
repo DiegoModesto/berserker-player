@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -53,57 +54,11 @@ func run() error {
 		}
 	}
 
-	database, err := db.Open(filepath.Join(cfg.DataFolder, "berserker.db"))
+	httpSrv, database, err := buildServer(cfg, log)
 	if err != nil {
-		return fmt.Errorf("db: %w", err)
-	}
-	defer database.Close()
-
-	store := core.New(database)
-	authSvc := auth.NewService(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.MediaTokenTTL, cfg.RefreshTokenTTL)
-	art := artwork.New(database, filepath.Join(cfg.DataFolder, "cache", "artwork"))
-	sc := scanner.New(store, cfg.MusicFolder, cfg.FFprobePath, log)
-
-	if err := seedAdmin(store, cfg, log); err != nil {
 		return err
 	}
-
-	// Scan inicial em background.
-	if cfg.ScanOnStart {
-		go func() {
-			log.Info("iniciando scan", "music", cfg.MusicFolder)
-			if _, err := sc.Scan(context.Background()); err != nil {
-				log.Error("scan falhou", "err", err)
-			}
-		}()
-	}
-	// Watcher de filesystem (rescan incremental em tempo real).
-	if cfg.Watch {
-		go func() {
-			if err := sc.Watch(context.Background(), 2*time.Second); err != nil {
-				log.Error("watcher falhou", "err", err)
-			}
-		}()
-	}
-	// Scan periódico (se configurado).
-	if cfg.ScanInterval > 0 {
-		go func() {
-			t := time.NewTicker(cfg.ScanInterval)
-			defer t.Stop()
-			for range t.C {
-				if _, err := sc.Scan(context.Background()); err != nil {
-					log.Error("scan periódico falhou", "err", err)
-				}
-			}
-		}()
-	}
-
-	srv := nativeapi.NewServer(cfg, store, authSvc, sc, art, log, version)
-	httpSrv := &http.Server{
-		Addr:              announceAddr(cfg.Port),
-		Handler:           srv.Router(),
-		ReadHeaderTimeout: 10 * time.Second,
-	}
+	defer database.Close()
 
 	// Shutdown gracioso.
 	errCh := make(chan error, 1)
@@ -125,6 +80,60 @@ func run() error {
 		defer cancel()
 		return httpSrv.Shutdown(ctx)
 	}
+}
+
+// buildServer faz toda a montagem (db, store, serviços, seed, scans) e devolve
+// o *http.Server pronto (sem escutar) e a conexão. Separado de run() para teste.
+func buildServer(cfg config.Config, log *slog.Logger) (*http.Server, *sql.DB, error) {
+	database, err := db.Open(filepath.Join(cfg.DataFolder, "berserker.db"))
+	if err != nil {
+		return nil, nil, fmt.Errorf("db: %w", err)
+	}
+
+	store := core.New(database)
+	authSvc := auth.NewService(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.MediaTokenTTL, cfg.RefreshTokenTTL)
+	art := artwork.New(database, filepath.Join(cfg.DataFolder, "cache", "artwork"))
+	sc := scanner.New(store, cfg.MusicFolder, cfg.FFprobePath, log)
+
+	if err := seedAdmin(store, cfg, log); err != nil {
+		database.Close()
+		return nil, nil, err
+	}
+
+	if cfg.ScanOnStart {
+		go func() {
+			log.Info("iniciando scan", "music", cfg.MusicFolder)
+			if _, err := sc.Scan(context.Background()); err != nil {
+				log.Error("scan falhou", "err", err)
+			}
+		}()
+	}
+	if cfg.Watch {
+		go func() {
+			if err := sc.Watch(context.Background(), 2*time.Second); err != nil {
+				log.Error("watcher falhou", "err", err)
+			}
+		}()
+	}
+	if cfg.ScanInterval > 0 {
+		go func() {
+			t := time.NewTicker(cfg.ScanInterval)
+			defer t.Stop()
+			for range t.C {
+				if _, err := sc.Scan(context.Background()); err != nil {
+					log.Error("scan periódico falhou", "err", err)
+				}
+			}
+		}()
+	}
+
+	srv := nativeapi.NewServer(cfg, store, authSvc, sc, art, log, version)
+	httpSrv := &http.Server{
+		Addr:              announceAddr(cfg.Port),
+		Handler:           srv.Router(),
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	return httpSrv, database, nil
 }
 
 func announceAddr(port int) string { return fmt.Sprintf(":%d", port) }

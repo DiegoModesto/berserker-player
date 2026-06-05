@@ -21,6 +21,7 @@ func (s *Server) registerLibraryRoutes(r chi.Router) {
 
 	r.Get("/playlists", s.handleListPlaylists)
 	r.Post("/playlists", s.handleCreatePlaylist)
+	r.Post("/playlists/smart", s.handleCreateSmartPlaylist)
 	r.Get("/playlists/{id}", s.handleGetPlaylist)
 	r.Put("/playlists/{id}", s.handleUpdatePlaylist)
 	r.Delete("/playlists/{id}", s.handleDeletePlaylist)
