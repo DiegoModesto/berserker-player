@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+apps/webapp/dist
+apps/mobile
+server/data
+**/*.db
+**/*.db-wal
+**/*.db-shm
+.git
+Plans
+**/DerivedData

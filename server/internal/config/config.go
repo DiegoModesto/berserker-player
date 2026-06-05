@@ -20,6 +20,7 @@ type Config struct {
 	LogLevel           string        `toml:"log_level"`
 	ScanInterval       time.Duration `toml:"scan_interval"`
 	ScanOnStart        bool          `toml:"scan_on_start"`
+	Watch              bool          `toml:"watch"`
 	JWTSecret          string        `toml:"jwt_secret"`
 	AccessTokenTTL     time.Duration `toml:"access_token_ttl"`
 	RefreshTokenTTL    time.Duration `toml:"refresh_token_ttl"`
@@ -42,6 +43,7 @@ func defaults() Config {
 		LogLevel:           "info",
 		ScanInterval:       0, // 0 = desabilitado (scan só no boot)
 		ScanOnStart:        true,
+		Watch:              false,
 		AccessTokenTTL:     15 * time.Minute,
 		RefreshTokenTTL:    30 * 24 * time.Hour,
 		MediaTokenTTL:      6 * time.Hour,
@@ -140,6 +142,9 @@ func applyEnv(cfg *Config) {
 		if d, err := time.ParseDuration(v); err == nil {
 			cfg.ScanInterval = d
 		}
+	}
+	if v := os.Getenv("BERSERKER_WATCH"); v == "true" || v == "1" {
+		cfg.Watch = true
 	}
 }
 

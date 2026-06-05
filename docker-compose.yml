@@ -1,0 +1,16 @@
+services:
+  berserker:
+    build: .
+    image: berserker-player:latest
+    ports:
+      - "4533:4533"
+    environment:
+      BERSERKER_ADMIN_PASSWORD: "troque-esta-senha"
+      BERSERKER_WATCH: "true"
+    volumes:
+      - ./music:/music:ro
+      - berserker-data:/data
+    restart: unless-stopped
+
+volumes:
+  berserker-data:

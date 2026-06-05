@@ -28,6 +28,31 @@ berserker-player/
 
 Visão geral em [`Plans/00-initial-plan.md`](Plans/00-initial-plan.md).
 
+## Quickstart (Docker)
+
+```bash
+# Coloque sua música em ./music e suba o stack:
+docker compose up --build
+# Acesse http://localhost:4533  (admin / valor de BERSERKER_ADMIN_PASSWORD)
+```
+
+A imagem é multi-stage: builda o WebApp, compila o servidor (binário estático, sem CGO) e
+empacota com `ffmpeg`. O WebApp é servido pelo próprio binário (origem única). `BERSERKER_WATCH=true`
+habilita rescan incremental em tempo real (fsnotify).
+
+## Rodar em desenvolvimento
+
+```bash
+# Servidor (Go + ffmpeg):
+cd server && go run ./cmd/berserker --music /sua/musica --data ./data --admin-password trocar
+
+# WebApp (proxy para :4533):
+cd apps/webapp && npm install && npm run dev      # http://localhost:5173
+
+# iOS (Xcode + XcodeGen):
+cd apps/mobile && xcodegen generate && open BerserkerPlayer.xcodeproj
+```
+
 ## Requisitos de desenvolvimento
 
 - **Go** 1.22+ e **ffmpeg** (servidor)

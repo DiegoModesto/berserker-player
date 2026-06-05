@@ -77,6 +77,14 @@ func run() error {
 			}
 		}()
 	}
+	// Watcher de filesystem (rescan incremental em tempo real).
+	if cfg.Watch {
+		go func() {
+			if err := sc.Watch(context.Background(), 2*time.Second); err != nil {
+				log.Error("watcher falhou", "err", err)
+			}
+		}()
+	}
 	// Scan periódico (se configurado).
 	if cfg.ScanInterval > 0 {
 		go func() {

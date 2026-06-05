@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server:
+    name: Servidor (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache-dependency-path: server/go.sum
+      - name: Instalar ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Vet
+        working-directory: server
+        run: go vet ./...
+      - name: Testes
+        working-directory: server
+        run: go test -race ./...
+      - name: Build
+        working-directory: server
+        run: CGO_ENABLED=0 go build ./...
+
+  webapp:
+    name: WebApp (React)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/webapp/package-lock.json
+      - working-directory: apps/webapp
+        run: npm ci
+      - name: Build (type-check + bundle)
+        working-directory: apps/webapp
+        run: npm run build
+
+  mobile:
+    name: iOS (Swift)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+      - name: Gerar projeto
+        working-directory: apps/mobile
+        run: xcodegen generate
+      - name: Build (simulador)
+        working-directory: apps/mobile
+        run: |
+          set -o pipefail
+          xcodebuild -project BerserkerPlayer.xcodeproj -scheme BerserkerPlayer \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -20
+
+  docker:
+    name: Imagem Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: berserker-player:ci
