@@ -22,7 +22,7 @@ export function PlayerBar() {
   if (!current) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-20 bg-neutral-900 border-t border-neutral-800 flex items-center px-4 gap-4">
+    <div className="fixed bottom-0 left-0 right-0 h-20 bg-neutral-100 dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 flex items-center px-4 gap-4">
       <div className="flex items-center gap-3 w-64 min-w-0">
         <Cover coverArtId={current.coverArtId} size={56} className="w-14 h-14 shrink-0" />
         <div className="min-w-0">

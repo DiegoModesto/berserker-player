@@ -22,7 +22,7 @@ export function Cover({ coverArtId, size = 200, className = "" }: {
 
   return (
     <div
-      className={`bg-neutral-800 rounded overflow-hidden flex items-center justify-center ${className}`}
+      className={`bg-neutral-200 dark:bg-neutral-800 rounded overflow-hidden flex items-center justify-center ${className}`}
       style={{ aspectRatio: "1 / 1" }}
     >
       {url ? (

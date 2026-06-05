@@ -13,9 +13,13 @@ pelo próprio binário do servidor (origem única → sem CORS, refresh por cook
 ```bash
 npm install
 npm run dev        # http://localhost:5173 (proxy /api → http://localhost:4533)
-npm run build      # type-check (tsc) + build de produção em dist/
+npm run build      # type-check (tsc) + build de produção em dist/ (+ PWA: sw.js, manifest)
+npm run test       # Vitest
+npm run test:cov   # Vitest com cobertura (v8)
 npm run gen:api    # (opcional) gera tipos a partir de ../../openapi.yaml
 ```
+
+Cobertura de testes (Vitest): **Statements/Lines ~96%**, Branches ~93%, Functions ~80%.
 
 Servir o build pelo servidor (origem única):
 ```bash
@@ -41,8 +45,9 @@ src/
 - **Seek:** atribui `currentTime` (direct play → Range/206 no servidor).
 
 ## Entregue
-Login · grade de álbuns com filtros · detalhe do álbum (tocar/fila) · **playlists**
-(lista + detalhe) · **favoritar** faixas · busca (debounce) · PlayerBar (play/pause,
-prev/next, seek, shuffle/repeat) · Media Session.
+Login · grade de álbuns com filtros · detalhe do álbum (tocar/fila) · playlists
+(lista + detalhe + **drag-and-drop**) · **favoritar** + **rating (estrelas)** · busca (debounce) ·
+PlayerBar (play/pause, prev/next, seek, shuffle/repeat) · Media Session ·
+**tema claro/escuro** · **PWA** (instalável, service worker, cache de app shell).
 
-Fases futuras: playlists drag-and-drop, rating na UI, tema claro/escuro, i18n, admin, PWA.
+Fases futuras: i18n PT/EN, painel admin, visualizações/EQ (Web Audio).

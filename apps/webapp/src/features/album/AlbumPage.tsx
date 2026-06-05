@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Endpoints } from "../../api/client";
 import { Cover } from "../../components/Cover";
 import { StarButton } from "../../components/StarButton";
+import { StarRating } from "../../components/StarRating";
 import { usePlayer } from "../../store/player";
 
 function fmt(t?: number): string {
@@ -42,18 +43,19 @@ export function AlbumPage() {
         </div>
       </div>
 
-      <ol className="divide-y divide-neutral-800">
+      <ol className="divide-y divide-neutral-200 dark:divide-neutral-800">
         {data.songs.map((song, i) => (
-          <li key={song.id}>
-            <button
-              onClick={() => playFrom(i)}
-              className="w-full flex items-center gap-4 py-2 px-2 hover:bg-neutral-900 text-left"
-            >
+          <li
+            key={song.id}
+            className="flex items-center gap-4 py-2 px-2 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+          >
+            <button onClick={() => playFrom(i)} className="flex items-center gap-4 flex-1 min-w-0 text-left">
               <span className="w-6 text-right text-neutral-500 tabular-nums">{song.track ?? i + 1}</span>
               <span className="flex-1 truncate">{song.title}</span>
-              <StarButton id={song.id} type="song" initial={song.starred ?? false} />
-              <span className="text-neutral-500 text-sm tabular-nums">{fmt(song.duration)}</span>
             </button>
+            <StarRating id={song.id} type="song" initial={song.rating ?? 0} />
+            <StarButton id={song.id} type="song" initial={song.starred ?? false} />
+            <span className="text-neutral-500 text-sm tabular-nums">{fmt(song.duration)}</span>
           </li>
         ))}
       </ol>
