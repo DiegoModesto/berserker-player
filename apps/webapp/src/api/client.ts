@@ -4,6 +4,7 @@ import type {
   Artist,
   Page,
   Playlist,
+  PlaylistDetail,
   SearchResult,
   Song,
   TokenPair,
@@ -104,6 +105,12 @@ export const Endpoints = {
   artists: () => api<Page<Artist>>("/artists?limit=200"),
   search: (q: string) => api<SearchResult>(`/search?q=${encodeURIComponent(q)}`),
   playlists: () => api<Playlist[]>("/playlists"),
+  playlist: (id: string) => api<PlaylistDetail>(`/playlists/${id}`),
+  createPlaylist: (name: string, songIds: string[] = []) =>
+    api<Playlist>("/playlists", { method: "POST", body: JSON.stringify({ name, songIds }) }),
+  updatePlaylist: (id: string, songIds: string[]) =>
+    api<Playlist>(`/playlists/${id}`, { method: "PUT", body: JSON.stringify({ songIds }) }),
+  deletePlaylist: (id: string) => api<void>(`/playlists/${id}`, { method: "DELETE" }),
   star: (id: string, type: string, on: boolean) =>
     api<void>("/star", { method: on ? "POST" : "DELETE", body: JSON.stringify({ id, type }) }),
   scrobble: (songId: string, event: string) =>

@@ -21,6 +21,8 @@ struct MainTabView: View {
             TabView {
                 LibraryView()
                     .tabItem { Label("Biblioteca", systemImage: "square.stack") }
+                PlaylistsView()
+                    .tabItem { Label("Playlists", systemImage: "music.note.list") }
                 SearchView()
                     .tabItem { Label("Buscar", systemImage: "magnifyingglass") }
                 SettingsView()

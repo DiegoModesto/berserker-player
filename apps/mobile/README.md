@@ -43,8 +43,9 @@ Sources/
 - **Scrobble:** `nowplaying` ao iniciar; `submission` ao passar 50% (dedup no servidor).
 - ATS: `NSAllowsArbitraryLoads` habilitado para servidores self-hosted em HTTP (dev).
 
-## MVP entregue
-Login (Keychain) · grade de álbuns com filtros · detalhe do álbum · busca · player
-(fila, seek, prev/next, shuffle/repeat) · mini-player · Now Playing · áudio em background.
+## Entregue
+Login (Keychain) · grade de álbuns com filtros · detalhe do álbum · busca · **playlists**
+(aba + detalhe) · **favoritar** no Now Playing · player (fila, seek, prev/next, shuffle/repeat) ·
+mini-player · Now Playing · áudio em background.
 
-Fases futuras: playlists, favoritos na UI, downloads offline (SwiftData), CarPlay, widgets.
+Fases futuras: downloads offline (SwiftData), CarPlay, widgets/Live Activities, i18n.

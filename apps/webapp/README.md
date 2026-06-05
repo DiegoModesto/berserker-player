@@ -40,8 +40,9 @@ src/
 - **Mídia:** `<audio>`/`<img>` usam `?token=` (token de mídia assinado), cacheado no client.
 - **Seek:** atribui `currentTime` (direct play → Range/206 no servidor).
 
-## MVP entregue
-Login · grade de álbuns com filtros · detalhe do álbum (tocar/fila) · busca (debounce) ·
-PlayerBar (play/pause, prev/next, seek, shuffle/repeat) · Media Session.
+## Entregue
+Login · grade de álbuns com filtros · detalhe do álbum (tocar/fila) · **playlists**
+(lista + detalhe) · **favoritar** faixas · busca (debounce) · PlayerBar (play/pause,
+prev/next, seek, shuffle/repeat) · Media Session.
 
-Fases futuras: playlists (drag-and-drop), favoritos/rating na UI, tema, i18n, admin, PWA.
+Fases futuras: playlists drag-and-drop, rating na UI, tema claro/escuro, i18n, admin, PWA.

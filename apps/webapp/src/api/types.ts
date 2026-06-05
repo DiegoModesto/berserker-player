@@ -64,6 +64,10 @@ export interface AlbumDetail extends Album {
   songs: Song[];
 }
 
+export interface PlaylistDetail extends Playlist {
+  songs: Song[];
+}
+
 export interface SearchResult {
   artists: Artist[];
   albums: Album[];

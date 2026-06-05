@@ -16,6 +16,9 @@ export function Layout() {
           <NavLink to="/" className={linkClass} end>
             Álbuns
           </NavLink>
+          <NavLink to="/playlists" className={linkClass}>
+            Playlists
+          </NavLink>
           <NavLink to="/search" className={linkClass}>
             Buscar
           </NavLink>

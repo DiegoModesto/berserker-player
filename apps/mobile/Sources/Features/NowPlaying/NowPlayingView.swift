@@ -31,9 +31,11 @@ struct MiniPlayerBar: View {
 
 struct NowPlayingView: View {
     @Environment(PlaybackEngine.self) private var playback
+    @Environment(Session.self) private var session
     @Environment(\.dismiss) private var dismiss
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
+    @State private var starred = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -75,6 +77,10 @@ struct NowPlayingView: View {
                 Button { playback.shuffle.toggle() } label: {
                     Image(systemName: "shuffle").foregroundStyle(playback.shuffle ? Theme.accent : .secondary)
                 }
+                Button { toggleStar() } label: {
+                    Image(systemName: starred ? "heart.fill" : "heart")
+                        .foregroundStyle(starred ? Theme.accent : .secondary)
+                }
                 Button { cycleRepeat() } label: {
                     Image(systemName: playback.repeatMode == .one ? "repeat.1" : "repeat")
                         .foregroundStyle(playback.repeatMode == .off ? .secondary : Theme.accent)
@@ -83,6 +89,16 @@ struct NowPlayingView: View {
             Spacer()
         }
         .padding()
+        .task(id: playback.current?.id) {
+            starred = playback.current?.starred ?? false
+        }
+    }
+
+    private func toggleStar() {
+        guard let song = playback.current else { return }
+        let next = !starred
+        starred = next
+        Task { try? await session.api.star(id: song.id, type: "song", on: next) }
     }
 
     private func cycleRepeat() {

@@ -4,6 +4,8 @@ import { Layout } from "./components/Layout";
 import { AlbumPage } from "./features/album/AlbumPage";
 import { LibraryPage } from "./features/library/LibraryPage";
 import { LoginPage } from "./features/login/LoginPage";
+import { PlaylistPage } from "./features/playlists/PlaylistPage";
+import { PlaylistsPage } from "./features/playlists/PlaylistsPage";
 import { SearchPage } from "./features/search/SearchPage";
 
 export function App() {
@@ -24,6 +26,8 @@ export function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<LibraryPage />} />
         <Route path="/album/:id" element={<AlbumPage />} />
+        <Route path="/playlists" element={<PlaylistsPage />} />
+        <Route path="/playlist/:id" element={<PlaylistPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
