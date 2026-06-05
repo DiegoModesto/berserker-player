@@ -17,6 +17,8 @@ server/coverage.out
 # ---- Node / WebApp ----
 node_modules/
 apps/webapp/dist/
+apps/webapp/dev-dist/
+apps/webapp/coverage/
 apps/webapp/.vite/
 apps/webapp/src/api/generated.ts
 

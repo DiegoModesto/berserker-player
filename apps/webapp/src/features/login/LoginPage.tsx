@@ -22,18 +22,18 @@ export function LoginPage() {
   }
 
   return (
-    <div className="h-screen flex items-center justify-center bg-neutral-950 text-neutral-100">
+    <div className="h-screen flex items-center justify-center bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <form onSubmit={submit} className="w-80 flex flex-col gap-3">
         <h1 className="text-3xl font-bold text-center text-berserker">Berserker</h1>
         <input
-          className="px-3 py-2 rounded bg-neutral-800 border border-neutral-700"
+          className="px-3 py-2 rounded bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700"
           placeholder="Usuário"
           value={username}
           autoComplete="username"
           onChange={(e) => setUsername(e.target.value)}
         />
         <input
-          className="px-3 py-2 rounded bg-neutral-800 border border-neutral-700"
+          className="px-3 py-2 rounded bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700"
           type="password"
           placeholder="Senha"
           value={password}

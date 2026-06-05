@@ -113,6 +113,8 @@ export const Endpoints = {
   deletePlaylist: (id: string) => api<void>(`/playlists/${id}`, { method: "DELETE" }),
   star: (id: string, type: string, on: boolean) =>
     api<void>("/star", { method: on ? "POST" : "DELETE", body: JSON.stringify({ id, type }) }),
+  rating: (id: string, type: string, rating: number) =>
+    api<void>("/rating", { method: "POST", body: JSON.stringify({ id, type, rating }) }),
   scrobble: (songId: string, event: string) =>
     api<void>("/scrobble", { method: "POST", body: JSON.stringify({ songId, event }) }),
 };
